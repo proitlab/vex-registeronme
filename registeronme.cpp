@@ -1,7 +1,7 @@
 #include <eosio/asset.hpp>
 #include <eosio/multi_index.hpp>
 #include <eosio/eosio.hpp>
-//#include <eosio/system.hpp>
+
 
 using namespace eosio;
 
@@ -18,8 +18,8 @@ class [[eosio::contract]] registeronme : public eosio::contract {
         // @abi table member
         struct [[eosio::table]] member {
             name account_name;
-            //asset quantity;
-            uint64_t quantity;
+            asset quantity;
+            //uint64_t quantity;
 
 
             uint64_t primary_key()const { return account_name.value; }
@@ -38,7 +38,20 @@ class [[eosio::contract]] registeronme : public eosio::contract {
 
         [[eosio::action]]
         void getversion() {
-            print("RegisterOnMe SC v1.2 - databisnisid - 20200803\t");
+            print("RegisterOnMe SC v1.7 - databisnisid - 20200804\t");
+        }
+
+        [[eosio::action]]
+        void clearmembers() {
+            require_auth(_self);
+
+            members _members(get_self(), get_self().value);
+
+            auto itr = _members.begin();
+            while (itr != _members.end()) {
+                itr = _members.erase(itr);
+            }
+            print("All records are deleted!");
         }
    
         [[eosio::on_notify("vex.token::transfer")]]
@@ -61,14 +74,14 @@ class [[eosio::contract]] registeronme : public eosio::contract {
 
                 if( itr != _members.end() ) {
                     _members.modify( itr, get_self(), [&](auto &row) {
-                        row.quantity += quantity.amount;
-                        //row.quantity = quantity;
+                        row.quantity.amount += quantity.amount;
+                        row.quantity.symbol = quantity.symbol;
                     });
                 } else {
                     _members.emplace( get_self(), [&](auto &row){
                         row.account_name = from;
-                        row.quantity = quantity.amount;
-                        //row.quantity += quantity;
+                        row.quantity.amount = quantity.amount;
+                        row.quantity.symbol = quantity.symbol;
                     });
                 }
             }
