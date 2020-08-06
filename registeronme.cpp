@@ -11,7 +11,14 @@ class [[eosio::contract]] registeronme : public eosio::contract {
 
     private:
         static constexpr symbol vex_symbol = symbol(symbol_code("VEX"), 4);
-        //static constexpr symbol ram_symbol     = symbol(symbol_code("RAM"), 0);
+ 
+        struct account
+        {
+            asset balance;
+            uint64_t primary_key() const {return balance.symbol.code().raw();}
+        };
+
+        typedef eosio::multi_index< eosio::name("accounts"), account > accounts;
 
     public:
 
@@ -30,15 +37,9 @@ class [[eosio::contract]] registeronme : public eosio::contract {
         typedef eosio::multi_index< "members"_n, member > members;
 
 
-        /*
-        uint32_t now() {
-            return current_time_point().sec_since_epoch();
-        }
-        */
-
         [[eosio::action]]
         void getversion() {
-            print("RegisterOnMe SC v1.7 - databisnisid - 20200804\t");
+            print("RegisterOnMe SC v1.8 - databisnisid - 20200806\t");
         }
 
         [[eosio::action]]
@@ -64,7 +65,6 @@ class [[eosio::contract]] registeronme : public eosio::contract {
             }
 
             if ( to == get_self()) {
-                //check(now() < the_party, "You're way late");
                 check(quantity.amount >= 10000, "Minimum transfer is 1 VEX");
                 check(quantity.symbol == vex_symbol, "We only accept VEX.");
 
@@ -84,6 +84,23 @@ class [[eosio::contract]] registeronme : public eosio::contract {
                         row.quantity.symbol = quantity.symbol;
                     });
                 }
+            }
+
+            // Get account registeronme balance
+            accounts _accounts("vex.token"_n, "registeronme"_n.value);
+            const auto sym_name = symbol_code("VEX");
+            const auto& registeronme = _accounts.get( sym_name.raw() );
+
+            if ( registeronme.balance.amount / 10000 > 10000 ) {
+                // Do transfer to burningprize account if balance is more than 10000 VEX
+
+                asset quantity_more = asset( registeronme.balance.amount - 10000*10000, registeronme.balance.symbol ); 
+                
+                action(
+                    permission_level{ _self, "active"_n },
+                    "vex.token"_n, "transfer"_n,
+                    std::make_tuple(_self, "burningprize"_n, quantity_more, std::string("collecting the prize"))
+                ).send();
             }
             
        };
